@@ -7,7 +7,7 @@ I want to address for how long this corals stay D dominated without perturbation
 
 #### Data strecture:
 
-* data/qPCR_data.csv: Contains the clade specific (C and D) symbiont to host cell ratios and calculated D proportion
+* **data**/qPCR_data.csv: Contains the clade specific (C and D) symbiont to host cell ratios and calculated D proportion
     + *Core*: Individual ID for each replicated core used in the experiment (Colony-CoreNumber)
     + *Colony*: Coral host ID
     + *TimePoint*: sequential times in which the samples where collected
@@ -19,5 +19,5 @@ I want to address for how long this corals stay D dominated without perturbation
     + *D.Prp*: Proportion of the symbiont community composed by clade D (D.SH/Tot.SH)
     + *Other Experimental information*: multiple columns describing the experimental history fo the cores, tempearture at each time point etc... have to choose what is important and organise this better
  
-* DataAnalysis.Rmd/: R code and some preliminary graphs to explore the data
+* DataAnalysis.Rmd: R code and some preliminary graphs to explore the data. Renders to  DataAnalysis.html
 * **outputs/:** Did something good?? Save it here!
