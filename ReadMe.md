@@ -22,6 +22,9 @@ I want to address for how long this corals stay D dominated without perturbation
     https://anampc.github.io/D_Proportion/data
  
 * DataAnalysis.Rmd: R code and some preliminary graphs to explore the data. Renders to  DataAnalysis.html
+    
+    https://anampc.github.io/D_Proportion/DataAnalysis.Rmd
+    
     https://anampc.github.io/D_Proportion/DataAnalysis.html
 
 * **outputs/:** Did something good?? Save it here!
