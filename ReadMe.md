@@ -5,7 +5,7 @@ I want to look at the changes in *Symbiodinium* community composition in replica
 
 I want to address for how long this corals stay D dominated without perturbation (if there is not temperature stress). 
 
-#### Data strecture:
+#### Repository structure:
 
 * **data**/qPCR_data.csv: Contains the clade specific (C and D) symbiont to host cell ratios and calculated D proportion
     + *Core*: Individual ID for each replicated core used in the experiment (Colony-CoreNumber)
@@ -18,6 +18,10 @@ I want to address for how long this corals stay D dominated without perturbation
     + *Tot.SH*: Clade C + Clade D symbiont to host cell ratio
     + *D.Prp*: Proportion of the symbiont community composed by clade D (D.SH/Tot.SH)
     + *Other Experimental information*: multiple columns describing the experimental history fo the cores, tempearture at each time point etc... have to choose what is important and organise this better
+    
+    https://github.com/anampc/D_Proportion/tree/master/data
  
 * DataAnalysis.Rmd: R code and some preliminary graphs to explore the data. Renders to  DataAnalysis.html
+    https://github.com/anampc/D_Proportion/blob/master/DataAnalysis.html
+
 * **outputs/:** Did something good?? Save it here!
