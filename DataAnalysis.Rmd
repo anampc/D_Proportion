@@ -390,7 +390,7 @@ Define and test the model
   resdf$fit <- predict(D.Prp_Rank_2, newdata=resdf, type="response")
   
   plot(NA, xlim=c(0,690), ylim=c(0,1), yaxs="r",       
-       xlab="Days at ambient tempearture (26-29C)",
+       xlab="Days at ambient temperature (26-29C)",
        ylab="Proportion of clade D")
   reslist <- split(resdf, f=resdf$D.PrpRank_Ini)
   for (i in 1:length(reslist)) {
