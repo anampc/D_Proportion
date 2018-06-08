@@ -1,0 +1,408 @@
+---
+title: "DataAnalysis"
+author: "Ana Palacio"
+date: "June 7, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# knitr
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, fig.height=5, fig.width=6, echo = TRUE)
+
+
+# Required libraries
+
+library(reshape2)
+# library(lme4)
+# library(lmerTest)
+# library(emmeans)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(MASS)
+library(effects)
+```
+
+## Import the data and organize factors
+
+```{r read_data}
+
+# Load data from file
+qPCR.data <- read.csv("data/qPCR_data.csv")
+
+
+# Organize factors   
+
+  # Time points
+    qPCR.data$Time <- factor (as.factor(qPCR.data$Time), levels=c("T0","T1","T2","T3","T4", "T5",
+                                                                  "T8", "T9", "T10", 
+                                                                  "T11", "T12", "T13","T14",
+                                                                  "T15","T16", "T17",
+                                                                  "T20", "T23", "T24", 
+                                                                  "T26"))
+  # Colony by mean D dominance  
+    qPCR.data$Colony<-factor(as.character(qPCR.data$Colony), 
+                             levels=c("S1","S4","S3","S5","S6","S2"))
+    
+  # Get the dates in the date format and extract the number of days in the experiment
+    qPCR.data$Date <- (as.Date(qPCR.data$Date, format="%Y-%m-%d"))
+    qPCR.data$Days <- (as.numeric(qPCR.data$Date)-16616)
+    
+```
+
+## Exploratory graphs
+
+### D proportions 
+
+```{r D_Proportion_Data_Exploration}
+
+# library(ggplot2)
+# library(ggthemes)
+
+
+# 1. Mean proportion of clade D symbiodinium over time by colony and beached vs not bleached in 2016
+
+Dprop_all <- ggplot(qPCR.data, aes (Date, D.Prp, colour=factor(Colony))) +
+  stat_summary(fun.data = "mean_cl_boot",geom = "point")+
+    # stat_summary(fun.y = "median", geom = "point") +
+    # stat_summary(fun.data = "mean_cl_boot",geom = "errorbar")+
+   stat_summary(fun.data = "mean_cl_boot",geom = "line")+
+    ylab("Proportion of D") + 
+    xlab("Date")  +  theme_gdocs( )  + 
+    facet_grid(Bleached_1~.)
+Dprop_all +
+    annotate("rect", xmin= as.Date("2016-01-18"), xmax = as.Date("2016-02-23"), 
+             ymin = 0, ymax = 1, alpha = .2) + 
+    annotate("rect", xmin= as.Date("2017-05-12"), 
+             xmax = as.Date("2017-06-15"), ymin = 0, ymax = 1, alpha = .2) 
+
+  # Notes: Colonies with initially more C, transition faster to C dominated colonies. Is this a colony effect or just a result of having more C to start with?. Check individual core trajectories in each colony??
+
+
+# 2. Proportion of clade D symbiodinium over time in each core and divided between beached vs not bleached in 2016
+
+## Change the subset options from S1 to S6 to look at the different colonies 
+
+Dprop_Selected_colony <- ggplot(subset(qPCR.data, Colony=="S5"), aes (Date, D.Prp, colour=factor(Core))) +
+   geom_line() +
+   geom_point() +
+    ylab("Proportion of D for selected colony") + 
+    xlab("Date")  +  theme_gdocs( )  + 
+    facet_grid(Bleached_1~.) + theme(legend.position="none")
+
+Dprop_Selected_colony +
+    annotate("rect", xmin= as.Date("2016-01-18"), xmax = as.Date("2016-02-23"), 
+             ymin = 0, ymax = 1, alpha = .2) + 
+    annotate("rect", xmin= as.Date("2017-05-12"), 
+             xmax = as.Date("2017-06-15"), ymin = 0, ymax = 1, alpha = .2)
+    
+
+# Notes: Does not seem to be a Colony effect, but a Initial D proportion effect. Also, cores with non-detectable C that were not bleached in 2016 gained considerable amounts of C by mid 2017 (Colonies S2, S5, S6)! 
+```
+
+What is driving the changes in D proportion? Is C increasing under control temperature? D decreasing? both? 
+
+### Symbiont to host cell ratio (S/H, C/H, D/H) 
+
+```{r S/H_Data_Exploration}
+ 
+# 1. Average total symbiont to host cell ratio over time per colony and Bleached vs not bleached in 2016  
+
+  SH_all <- ggplot(qPCR.data, aes (Date, log10(Tot.SH), colour=factor(Colony))) +
+      stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2)+
+      stat_summary(fun.y=mean, geom="line", size =1, alpha=0.5) + ylim(-7,-1.5) + 
+      ylab("log 10 S/H cell ratio") + 
+      xlab("Months")  +  theme_gdocs( )  + 
+      #scale_x_continuous(breaks = seq(0, 40, by = 3)) +
+      facet_grid(Bleached_1~.) # Where the corals bleached in 2016?
+  SH_all +  # Bleaching periods in gray 
+      annotate("rect", xmin= as.Date("2016-01-18"), 
+               xmax = as.Date("2016-02-23"), ymin = -7, ymax = -1.5, alpha = .2) + 
+       annotate("rect", xmin= as.Date("2017-05-12"), 
+             xmax = as.Date("2017-06-15"), ymin = -7, ymax = -2, alpha = .2) 
+  
+    # Notes: Colony S1 decline in corals not bleached is weird. Test other symbionts different that C and D??
+  # Stronger reduction on the S/H cell ratio in the first bleaching event (2016) 
+  
+
+# 2. Average C symbiont to host cell ratio over time per colony and Bleached vs not bleached in 2016  
+  SC_all <- ggplot(qPCR.data, aes (Date, log10(C.SH), colour=factor(Colony))) +
+      stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2)+
+      stat_summary(fun.y=mean, geom="line", size =1, alpha=0.5) + ylim(-8,-1.5) + 
+      ylab("log 10 C/H cell ratio") + 
+    xlab("Months")  +  theme_gdocs( )  + 
+    # scale_x_continuous(breaks = seq(0, 40, by = 3)) +
+      facet_grid(Bleached_1~.) # Where the corals bleached in 2016?
+  SC_all + # Bleaching periods in gray 
+      annotate("rect", xmin= as.Date("2016-01-18"), 
+               xmax = as.Date("2016-02-23"), ymin = -7, ymax = -1.5, alpha = .2) + 
+      annotate("rect", xmin= as.Date("2017-05-12"), 
+               xmax = as.Date("2017-06-15"), ymin = -7, ymax = -2, alpha = .2) 
+  # Notes: Use "No" bleached data to calculate the population growth on symbiodinium C when there is not heat stress??
+  
+# 3. Average D symbiont to host cell ratio over time per colony and Bleached vs not bleached in 2016  
+DC_all <- ggplot(qPCR.data, aes (Date, log(D.SH), colour=factor(Colony))) +
+    stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2)+
+    stat_summary(fun.y=mean, geom="line", size =1, alpha=0.5) +# ylim(-7,-1.5) + 
+    ylab("log 10 D/H cell ratio") + 
+  xlab("Months")  +  theme_gdocs( )  + 
+  # scale_x_continuous(breaks = seq(0, 40, by = 3)) +
+  facet_grid(Bleached_1~.) # Where the corals bleached in 2016?
+  
+DC_all + # Bleaching periods in gray 
+    annotate("rect", xmin= as.Date("2016-01-18"), 
+             xmax = as.Date("2016-02-23"), ymin = -7, ymax = -1.5, alpha = .2) + 
+    annotate("rect", xmin= as.Date("2017-05-12"), 
+             xmax = as.Date("2017-06-15"), ymin = -7, ymax = -2, alpha = .2) 
+
+```
+
+Lots of noise, but C seems to increase as well D to decrease when there is not temperature stress. 
+
+* Figure whats the best model(s) to address this
+* Remove T3 data points with weird D peak? 
+* Try Lotka-Volterra competition coefficients. Ideas: 
+  - Coral host cells as limiting resource (space, access to light)?
+  - Time = days under a specific temperature 
+  - Specific growth rates and competition coefficients are unknown (Question: how temperature influence specific growth rates?)
+  - C better competitor under control temperature
+  - D better competitor under heat stress (bleaching) temperature
+  - C and D do not seem to coexist under stable conditions, mixed C/D communities are unstable and seems to be in transition to one of the C or D dominated states.
+  
+* Try quasi-binomial models to estimate D proportion over time under control temperatures. 
+
+## Quasi-binomial models for D proportion
+
+### 1. Model before the first bleaching event
+
+Cores that were bleached in 2016 were maintained in more constant conditions (Temperature and light) than the ones that were not bleached. 
+* Used this data to describe the changes in D proportion under temperature ~26-27C (Bleached=="Yes").
+* Remove the corals that were shaded(Tre_1 != "Dark")
+
+```{r Data_for_Quasi-binomal_BeforeBleaching2016}
+
+BeforeBleaching1<-subset(qPCR.data, Days<200) # Remoce data points after bleaching
+BeforeBleaching1<-subset(BeforeBleaching1, Bleached_1=="Yes")
+BeforeBleaching1<-subset(BeforeBleaching1, Tre_1 != "Dark")
+
+# Add Initial D proportion in each core (during T= T0) as a variable 
+for (Core in BeforeBleaching1$Core) {
+  tdata <- BeforeBleaching1[which(BeforeBleaching1$Core==Core), ]
+  for (Days in BeforeBleaching1$Days) {
+    tdata[which(tdata$Days==Days), "Initial_D"] <- tdata[which(tdata$Days==0), "D.Prp"]
+  }
+  BeforeBleaching1[which(BeforeBleaching1$Core==Core), "Initial_D"] <- tdata[, "Initial_D"]
+}
+
+```
+
+Rank the cores by Initial D proportion.
+
+This variable is what I will evaluate as a predictor of D proportion over time. Why?
+* there are very few C dominated cores at the begining of teh experiment and a lot of D dominated cores.
+* Dividing the cores by initial D proportion ranks:
+  - I lost detail of what happen with <50% D  cores (not interesting... all stay C dominated, rapidly become 100%C)
+  - Keep details of what happen with >80% D  cores (super interesting... small differences in the initial proportion determine how fast the cores become C dominated)
+
+
+```{r DPrpRank_for_Quasi-binomal_BeforeBleaching2016}
+
+# D proportion histograms 
+  Dprop_Hist <- ggplot(BeforeBleaching1, aes (D.Prp)) +
+    geom_histogram() + facet_wrap(~Date) +  theme_gdocs( ) 
+  Dprop_Hist
+  
+  # Note: very few data points <50% D at time T=T0 (2015-06-30)
+
+# Initial D_segments
+
+BeforeBleaching1$D.PrpRank_Ini<-rank(BeforeBleaching1$Initial_D)
+BeforeBleaching1$D.PrpRank_Ini<-cut(BeforeBleaching1$D.PrpRank_Ini, 
+                                      seq(9,760,100), include.lowest=TRUE)
+
+
+```
+
+Define and test the model
+
+* I tried Colony and Treatment (Tre_1) as factors, but only one treatment is different. Colony was significant but split them between D dominated and C dominated colonies, so I thinks this is an artifact of the number of cores with high or low D proportion in each colony. 
+
+```{r Quasi-binomalModel_BeforeBleaching2016}
+
+Dprop_BeforeB <- ggplot(BeforeBleaching1, aes (Date, D.Prp, colour=factor(D.PrpRank_Ini))) +
+    geom_jitter(width = 0.6) +  theme_gdocs( ) 
+ggExtra::ggMarginal(Dprop_BeforeB, type = 'histogram', margins = 'both', 
+                    size = 5,  colour = 'black',  fill = 'gray') 
+
+# Initial Proportion Model by rank 
+  
+  D.Prp_Rank<-glm (D.Prp ~ Days + D.PrpRank_Ini, family = quasibinomial,
+                 data=BeforeBleaching1,  na.action=na.omit)
+  
+    summary(D.Prp_Rank)
+    confint(D.Prp_Rank)
+    MASS::dropterm(D.Prp_Rank, test="F")  # Partial F-tests
+    #drop1(D.Prp_BM, test="F")
+  
+    E.Prp<-effects::Effect(c( "Days", "D.PrpRank_Ini"), D.Prp_Rank, family = quasibinomial,
+                xlevels=list(Days=seq(0, 200, 30)))
+  #plot(E.Prp, family = quasibinomial)
+  
+  scatter.smooth(fitted(D.Prp_Rank), resid(D.Prp_Rank)); abline(h=0, lty=2)
+  
+  
+  # Fitted values and plot Change in DProportion ~ days for different Colonies
+  
+  resdf <- expand.grid(Days=0:200,
+                       D.PrpRank_Ini=unique(BeforeBleaching1$D.PrpRank_Ini))
+  
+  resdf$fit <- predict(D.Prp_Rank, newdata=resdf, type="response")
+
+  plot(NA, xlim=c(0,200), ylim=c(0,1), yaxs="r",       
+       xlab="Days under control temperature (26C)",
+       ylab="Proportion of clade D")
+  reslist <- split(resdf, f=resdf$D.PrpRank_Ini)
+  for (i in 1:length(reslist)) {
+    with(reslist[[i]], lines(fit ~ Days, lwd=1))
+  }
+  abline(v=c(90,180), col=("blue"), lty=2) # Add lines for ~3 and 6 months
+  abline(h=0.5, col=("red"), lty=3) # Add a line for 50% CD communities
+   
+
+# Colony Model
+
+D.Prp_Colony<-glm (D.Prp~ Days + Colony + Tre_1 , family = quasibinomial,
+                                  data=BeforeBleaching1,  na.action=na.omit)
+                   
+      summary(D.Prp_Colony)
+      
+      MASS::dropterm(D.Prp_Colony, test="F")  # Partial F-tests. All the terms are signficant :/
+      
+        
+      E.Prp<-effects::Effect(c("Days", "Colony"), partial.residuals=F, D.Prp_Colony, family = quasibinomial,
+                      xlevels=list(Days=seq(0, 200, 30)))
+      plot(E.Prp, family = "quasibinomial")
+        
+      scatter.smooth(fitted(D.Prp_Colony), resid(D.Prp_Colony)); abline(h=0, lty=2)
+      # How quasibinomial residuals are supposed to look?
+    
+    
+    # Fitted values and plot Change in DProportion ~ days for different Colonies
+    
+    resdf <- expand.grid(Days=0:200, 
+                         Colony=unique(BeforeBleaching1$Colony),
+                         Tre_1=unique(BeforeBleaching1$Tre_1))
+                         
+    resdf$fit <- predict(D.Prp_Colony, newdata=resdf, type="response")
+    plot(NA, xlim=c(0,200), ylim=c(0,1),        
+         xlab="Days under control temperature",
+         ylab="Proportion of clade D")
+    reslist <- split(resdf, f=resdf$Colony)
+    for (i in 1:length(reslist)) {
+      with(reslist[[i]], lines(fit ~ Days, lwd=1))
+    }
+    
+    # Why is this plotting linear data also??  
+  
+
+anova(D.Prp_Rank, D.Prp_Colony, test = "F")
+
+```
+
+HOW CAN I ADD CI FOR THIS PREDICTIONS???
+
+
+### 2. Model for the corals that where not bleached the first time (2016)
+
+Cores that were not bleached in 2016 were in ambient temperature tanks (Temperature and light variable). The transition to C dominance seems to be slower than under constant 26C, but these are a good experiment of long term evolution of the D proportions at "field" temperatures when there is not bleaching conditions.
+
+* Used this data to describe the changes in D proportion under ambient ~26-29C (Bleached=="No").
+* Data until before second bleaching event
+
+```{r Data_for_Quasi-binomal_NotBleached_in_2016}
+
+NotBleached<-subset(qPCR.data, Days<690) # Remove data points after second bleaching
+NotBleached<-subset(NotBleached, Bleached_1=="No")
+
+# Add Initial D proportion in each core during the earliest time with available data
+# (T= min)
+
+for (Core in NotBleached$Core) {
+  tdata <- NotBleached[which(NotBleached$Core==Core), ]
+  for (Days in NotBleached$Days) {
+    tdata[which(tdata$Days==Days), "Initial_D"] <- tdata[which.min(tdata$Days), "D.Prp"]
+  }
+  NotBleached[which(NotBleached$Core==Core), "Initial_D"] <- tdata[, "Initial_D"]
+}
+
+# D proporion histograms 
+  Dprop_Hist <- ggplot(NotBleached, aes (D.Prp)) +
+    geom_histogram() + facet_wrap(~Date) +  theme_gdocs( ) 
+  Dprop_Hist
+# Note: Almost no data points <50% D at time T=T0 (2015-06-30)
+
+```
+
+Rank the cores by Initial D proportion.
+
+There is even fewer C dominated cores at the begining of the experiment in these subset od the data
+
+```{r DPrpRank_for_Quasi-binomal_NotBleached_2016}
+
+# Initial D_segments
+
+NotBleached$D.PrpRank_Ini<-rank(NotBleached$Initial_D)
+NotBleached$D.PrpRank_Ini<-cut(NotBleached$D.PrpRank_Ini, 
+                                      seq(3,243,60), include.lowest=TRUE)
+
+Dprop_NoBleaching <- ggplot(NotBleached, aes (Date, D.Prp, colour=factor(D.PrpRank_Ini))) +
+    geom_point(width = 0.5) +  theme_gdocs( ) 
+ggExtra::ggMarginal(Dprop_NoBleaching, type = 'histogram', margins = 'both', 
+                    size = 5,  colour = 'black',  fill = 'gray')
+
+```
+
+Define and test the model
+
+
+```{r DPrpRank_QuasiBinomalModel_NotBleached_in_2016}
+  
+# Initial Proportion Model by rank 
+  
+  D.Prp_Rank_2<-glm (D.Prp ~ Days + D.PrpRank_Ini, family = quasibinomial,
+                 data=NotBleached,  na.action=na.omit)
+  
+    summary(D.Prp_Rank_2)
+    MASS::dropterm(D.Prp_Rank_2, test="F")  # Partial F-tests
+  
+    E.Prp<-effects::Effect(c( "Days", "D.PrpRank_Ini"), D.Prp_Rank_2, family = quasibinomial,
+                xlevels=list(Days=seq(0, 200, 30)))
+  #plot(E.Prp, family = quasibinomial)
+  
+  scatter.smooth(fitted(D.Prp_Rank_2), resid(D.Prp_Rank_2)); abline(h=0, lty=2)
+  
+  
+  # Fitted values and plot Change in DProportion ~ days for different Colonies
+  
+  resdf <- expand.grid(Days=0:690, 
+                       D.PrpRank_Ini=unique(NotBleached$D.PrpRank_Ini))
+  
+  resdf$fit <- predict(D.Prp_Rank_2, newdata=resdf, type="response")
+  
+  plot(NA, xlim=c(0,690), ylim=c(0,1), yaxs="r",       
+       xlab="Days at ambient tempearture (26-29C)",
+       ylab="Proportion of clade D")
+  reslist <- split(resdf, f=resdf$D.PrpRank_Ini)
+  for (i in 1:length(reslist)) {
+    with(reslist[[i]], lines(fit ~ Days, lwd=1))
+  }
+  abline(v=c(180,360,540, 720), col=("blue"), lty=2) # Add lines for ~6, 12, 18 and 24 months
+  abline(h=0.5, col=("red"), lty=3) # Add a line for 50% CD communities
+  
+   
+  summary(BeforeBleaching1$D.PrpRank_Ini)
+  
+
+```
+
+CI FOR THIS PREDICTIONS???

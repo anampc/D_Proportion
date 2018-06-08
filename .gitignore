@@ -1,0 +1,11 @@
+# R and R studio 
+.RData
+.Rhistory
+.Rproj.user
+Rplots.pdf
+
+
+# Other files
+.directory
+.dropbox
+.Rproj.user
