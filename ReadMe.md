@@ -19,13 +19,14 @@ I want to address for how long this corals stay D dominated without perturbation
     + *D.Prp*: Proportion of the symbiont community composed by clade D (D.SH/Tot.SH)
     + *Other Experimental information*: multiple columns describing the experimental history fo the cores, tempearture at each time point etc... have to choose what is important and organise this better
     
-    [https://anampc.github.io/D_Proportion/data]
+    [https://github.com/anampc/D_Proportion/tree/master/data]
  
 * DataAnalysis.Rmd: R code and some preliminary graphs to explore the data. Renders to  DataAnalysis.html
     
-    [https://anampc.github.io/D_Proportion/DataAnalysis.Rmd]
+    [https://github.com/anampc/D_Proportion/blob/master/DataAnalysis.Rmd]
     
     [https://anampc.github.io/D_Proportion/DataAnalysis.html]
     
 * **outputs/:** Did something good?? Save it here!
+    [https://github.com/anampc/D_Proportion/tree/master/outputs]
 
