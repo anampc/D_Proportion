@@ -159,15 +159,16 @@ DC_all + # Bleaching periods in gray
 
 Lots of noise, but C seems to increase as well D to decrease when there is not temperature stress. 
 
-* Figure whats the best model(s) to address this
+* Figure what is the best model(s) to address this
 * Remove T3 data points with weird D peak? 
 * Try Lotka-Volterra competition coefficients. Ideas: 
-  - Coral host cells as limiting resource (space, access to light)?
-  - Time = days under a specific temperature 
-  - Specific growth rates and competition coefficients are unknown (Question: how temperature influence specific growth rates?)
-  - C better competitor under control temperature
-  - D better competitor under heat stress (bleaching) temperature
-  - C and D do not seem to coexist under stable conditions, mixed C/D communities are unstable and seems to be in transition to one of the C or D dominated states.
+  + Coral host cells as limiting resource (space, access to light)?
+  + Time = days under a specific temperature 
+  + Specific growth rates and competition coefficients are unknown (Question: how temperature influence specific growth rates?)
+  + C better competitor in low temperatures
+  + D better competitor under heat stress (bleaching) temperature
+  + What about high, but not bleaching temperatures? (~29C)
+  + C and D do not seem to coexist under stable conditions, mixed C/D communities are unstable and seems to be in transition to one of the C or D dominated states.
   
 * Try quasi-binomial models to estimate D proportion over time under control temperatures. 
 
@@ -176,12 +177,13 @@ Lots of noise, but C seems to increase as well D to decrease when there is not t
 ### 1. Model before the first bleaching event
 
 Cores that were bleached in 2016 were maintained in more constant conditions (Temperature and light) than the ones that were not bleached. 
+
 * Used this data to describe the changes in D proportion under temperature ~26-27C (Bleached=="Yes").
-* Remove the corals that were shaded(Tre_1 != "Dark")
+* Remove the corals that were shaded (Tre_1 != "Dark")
 
 ```{r Data_for_Quasi-binomal_BeforeBleaching2016}
 
-BeforeBleaching1<-subset(qPCR.data, Days<200) # Remoce data points after bleaching
+BeforeBleaching1<-subset(qPCR.data, Days<200) # Remove data points after bleaching
 BeforeBleaching1<-subset(BeforeBleaching1, Bleached_1=="Yes")
 BeforeBleaching1<-subset(BeforeBleaching1, Tre_1 != "Dark")
 
@@ -196,13 +198,13 @@ for (Core in BeforeBleaching1$Core) {
 
 ```
 
-Rank the cores by Initial D proportion.
+Rank the cores by Initial_D_Proportion.
 
 This variable is what I will evaluate as a predictor of D proportion over time. Why?
-* there are very few C dominated cores at the begining of teh experiment and a lot of D dominated cores.
+* there are very few C dominated cores at the begining of the experiment and a lot of D dominated cores.
 * Dividing the cores by initial D proportion ranks:
-  - I lost detail of what happen with <50% D  cores (not interesting... all stay C dominated, rapidly become 100%C)
-  - Keep details of what happen with >80% D  cores (super interesting... small differences in the initial proportion determine how fast the cores become C dominated)
+  - I lost detail of what happen with <50% D  cores (not interesting... all stay C dominated, rapidly become 100% C)
+  - Keep details of what happen within >80% D cores (super interesting... small differences in the initial proportion determine how fast the cores gain more C)
 
 
 ```{r DPrpRank_for_Quasi-binomal_BeforeBleaching2016}
@@ -234,44 +236,82 @@ Dprop_BeforeB <- ggplot(BeforeBleaching1, aes (Date, D.Prp, colour=factor(D.PrpR
 ggExtra::ggMarginal(Dprop_BeforeB, type = 'histogram', margins = 'both', 
                     size = 5,  colour = 'black',  fill = 'gray') 
 
+Dprop_BeforeB <- ggplot(BeforeBleaching1, aes (Date, D.Prp, colour=factor(D.PrpRank_Ini))) +
+  stat_smooth(method="glm", family="binomial")
+  
+
+
 # Initial Proportion Model by rank 
   
   D.Prp_Rank<-glm (D.Prp ~ Days + D.PrpRank_Ini, family = quasibinomial,
                  data=BeforeBleaching1,  na.action=na.omit)
   
     summary(D.Prp_Rank)
+    
     confint(D.Prp_Rank)
     MASS::dropterm(D.Prp_Rank, test="F")  # Partial F-tests
     #drop1(D.Prp_BM, test="F")
   
-    E.Prp<-effects::Effect(c( "Days", "D.PrpRank_Ini"), D.Prp_Rank, family = quasibinomial,
-                xlevels=list(Days=seq(0, 200, 30)))
-  #plot(E.Prp, family = quasibinomial)
+  # E.Prp<-effects::Effect(c( "Days", "D.PrpRank_Ini"), D.Prp_Rank, family = quasibinomial,
+                # xlevels=list(Days=seq(0, 200, 30)))
+  # plot(E.Prp, family = quasibinomial)
   
   scatter.smooth(fitted(D.Prp_Rank), resid(D.Prp_Rank)); abline(h=0, lty=2)
   
+  # Are these residuals ok???
   
-  # Fitted values and plot Change in DProportion ~ days for different Colonies
-  
-  resdf <- expand.grid(Days=0:200,
+  # Fitted values and plot Change in DProportion ~ days for different Intial D_Proportions
+        # create a new data frame 
+        NewData <- expand.grid(Days=0:200,
                        D.PrpRank_Ini=unique(BeforeBleaching1$D.PrpRank_Ini))
-  
-  resdf$fit <- predict(D.Prp_Rank, newdata=resdf, type="response")
+        # get prediction
+        pred <- predict(D.Prp_Rank,newdata= NewData,se.fit=TRUE,
+                        type = "response")
+        # CI function
+        make_ci <- function(pred, data){
+          # fit, lower, and upper CI
+          fit <- pred$fit
+          se<-pred$se.fit
+          lower <- fit - 1.96*pred$se.fit
+          upper <- fit + 1.96*pred$se.fit
+          return(data.frame(fit, lower, upper, data))
+        }
+        my_pred <- make_ci(pred, NewData)
+        
+        # my_pred$D_Proportion[my_pred$D.PrpRank_Ini=="[9,109]"]<-"0.0 to 0.612"
+        # my_pred$D_Proportion[my_pred$D.PrpRank_Ini=="(109,209]"]<-"0.615 to 0.834"
+        # my_pred$D_Proportion[my_pred$D.PrpRank_Ini=="(209,309]"]<-"0.840 to 0.932"
+        # my_pred$D_Proportion[my_pred$D.PrpRank_Ini=="(309,409]"]<-"0.934 to 0.991"
+        # my_pred$D_Proportion[my_pred$D.PrpRank_Ini=="(409,509]"]<-"0.992 to 0.998"
+        # my_pred$D_Proportion[my_pred$D.PrpRank_Ini=="(509,609]"]<-"0.999"
+        # my_pred$D_Proportion[my_pred$D.PrpRank_Ini=="(609,709]"]<-"1"
+        # my_pred$D_Proportion<-as.factor(my_pred$D_Proportion)
+        
+        
+  #tiff('outputs/D_ProportionAt26C.tiff', units="in", width=6, height=4, res=300) 
+        
+        Dprop <- ggplot(my_pred, aes (Days, fit, shape=D.PrpRank_Ini)) +
+          # scale_fill_gradient(low = "blue", high = "green", midpoint = 0.5)+
+          # scale_colour_brewer(type = "Diverging", palette = "RdBu", direction = -1) +
+          geom_line() + theme_bw( ) +
+          geom_ribbon(aes(ymin=my_pred$lower, 
+                          ymax=my_pred$upper),
+                          linetype=0, alpha=0.3) +
+          scale_y_continuous(name="Proportion of D1a", expand = c(0, 0)) + 
+          scale_x_continuous(name=expression("Time under control temperature "(26*degree*C)),
+                            breaks = c(0, 90, 180),  
+                            label = c("", "3 months", "6 months"),
+                            expand = c(0, 0)) +
+          theme(legend.position="none", 
+                panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+        Dprop + 
+          annotate("rect", xmin= 0, xmax = 200, 
+                   ymin = 0, ymax = 0.5, alpha = .1)
+  #dev.off()
 
-  plot(NA, xlim=c(0,200), ylim=c(0,1), yaxs="r",       
-       xlab="Days under control temperature (26C)",
-       ylab="Proportion of clade D")
-  reslist <- split(resdf, f=resdf$D.PrpRank_Ini)
-  for (i in 1:length(reslist)) {
-    with(reslist[[i]], lines(fit ~ Days, lwd=1))
-  }
-  abline(v=c(90,180), col=("blue"), lty=2) # Add lines for ~3 and 6 months
-  abline(h=0.5, col=("red"), lty=3) # Add a line for 50% CD communities
-   
+# Colony Model (Not used)
 
-# Colony Model
-
-D.Prp_Colony<-glm (D.Prp~ Days + Colony + Tre_1 , family = quasibinomial,
+D.Prp_Colony<-glm (D.Prp~ Days * Colony + Tre_1 , family = quasibinomial,
                                   data=BeforeBleaching1,  na.action=na.omit)
                    
       summary(D.Prp_Colony)
@@ -279,45 +319,63 @@ D.Prp_Colony<-glm (D.Prp~ Days + Colony + Tre_1 , family = quasibinomial,
       MASS::dropterm(D.Prp_Colony, test="F")  # Partial F-tests. All the terms are signficant :/
       
         
-      E.Prp<-effects::Effect(c("Days", "Colony"), partial.residuals=F, D.Prp_Colony, family = quasibinomial,
-                      xlevels=list(Days=seq(0, 200, 30)))
-      plot(E.Prp, family = "quasibinomial")
-        
-      scatter.smooth(fitted(D.Prp_Colony), resid(D.Prp_Colony)); abline(h=0, lty=2)
-      # How quasibinomial residuals are supposed to look?
-    
-    
-    # Fitted values and plot Change in DProportion ~ days for different Colonies
-    
-    resdf <- expand.grid(Days=0:200, 
-                         Colony=unique(BeforeBleaching1$Colony),
-                         Tre_1=unique(BeforeBleaching1$Tre_1))
-                         
-    resdf$fit <- predict(D.Prp_Colony, newdata=resdf, type="response")
-    plot(NA, xlim=c(0,200), ylim=c(0,1),        
-         xlab="Days under control temperature",
-         ylab="Proportion of clade D")
-    reslist <- split(resdf, f=resdf$Colony)
-    for (i in 1:length(reslist)) {
-      with(reslist[[i]], lines(fit ~ Days, lwd=1))
-    }
-    
-    # Why is this plotting linear data also??  
-  
+  #     E.Prp<-effects::Effect(c("Days", "Colony"), partial.residuals=F, D.Prp_Colony, family = quasibinomial,
+  #                     xlevels=list(Days=seq(0, 200, 30)))
+  #     plot(E.Prp, family = "quasibinomial")
+  #       
+  #     scatter.smooth(fitted(D.Prp_Colony), resid(D.Prp_Colony)); abline(h=0, lty=2)
+  #     # How quasibinomial residuals are supposed to look?
+  #   
+  #   
+  #  # Fitted values and plot Change in DProportion ~ days for different Intial D_Proportions
+  #       # create a new data frame 
+  #       ColonyData <- expand.grid(Days=0:200,
+  #                      Colony=unique(BeforeBleaching1$Colony),
+  #                      Tre_1=unique(BeforeBleaching1$Tre_1))
+  #       # get prediction
+  #       pred <- predict(D.Prp_Colony,newdata= ColonyData,se.fit=TRUE,
+  #                       type = "response")
+  #       # CI function
+  #       make_ci <- function(pred, data){
+  #         # fit, lower, and upper CI
+  #         fit <- pred$fit
+  #         lower <- fit - 2*pred$se.fit
+  #         upper <- fit + 2*pred$se.fit
+  #         return(data.frame(fit, lower, upper, data))
+  #       }
+  #       my_pred <- make_ci(pred, ColonyData)
+  #       
+  # tiff('outputs/D_Pro_Col_At26C.tiff', units="in", width=6, height=4, res=300) 
+  #       
+  #       Dprop <- ggplot(my_pred, aes (Days, fit, colour=Tre_1, shape=Tre_1)) +
+  #         # scale_fill_gradient(low = "blue", high = "green", midpoint = 0.5)+
+  #         # scale_colour_brewer(type = "Diverging", palette = "RdBu", direction = -1) +
+  #         geom_line() + theme_bw( ) +
+  #         geom_ribbon(aes(ymin=my_pred$lower, 
+  #                         ymax=my_pred$upper),
+  #                         linetype=0, alpha=0.3) +
+  #         scale_y_continuous(name="Proportion of D1a", expand = c(0, 0)) + 
+  #         scale_x_continuous(name=expression("Time under control temperature "(26*degree*C)),
+  #                           breaks = c(0, 90, 180),  
+  #                           label = c("", "3 months", "6 months"),
+  #                           expand = c(0, 0)) +
+  #         theme(legend.position="none", 
+  #               panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  #       Dprop + 
+  #         annotate("rect", xmin= 0, xmax = 200, 
+  #                  ymin = 0, ymax = 0.5, alpha = .1)
+  # dev.off()
 
 anova(D.Prp_Rank, D.Prp_Colony, test = "F")
 
 ```
 
-HOW CAN I ADD CI FOR THIS PREDICTIONS???
-
-
 ### 2. Model for the corals that where not bleached the first time (2016)
 
-Cores that were not bleached in 2016 were in ambient temperature tanks (Temperature and light variable). The transition to C dominance seems to be slower than under constant 26C, but these are a good experiment of long term evolution of the D proportions at "field" temperatures when there is not bleaching conditions.
+Cores that were not bleached in 2016 were moved to in ambient temperature tanks (Temperature and light variable). The transition to C dominance seems to be slower than under constant 26C, but these are a good experiment of long term evolution of the D proportions at "field" temperatures when there is not bleaching conditions.
 
 * Used this data to describe the changes in D proportion under ambient ~26-29C (Bleached=="No").
-* Data until before second bleaching event
+* Data until before second bleaching event (Days<690)
 
 ```{r Data_for_Quasi-binomal_NotBleached_in_2016}
 
@@ -382,27 +440,43 @@ Define and test the model
   scatter.smooth(fitted(D.Prp_Rank_2), resid(D.Prp_Rank_2)); abline(h=0, lty=2)
   
   
-  # Fitted values and plot Change in DProportion ~ days for different Colonies
-  
-  resdf <- expand.grid(Days=0:690, 
+    # Fitted values and plot Change in D Proportion ~ days for different Intial D_Proportions
+        
+  # create a new data frame 
+        NotBleachedData <- expand.grid(Days=0:690,
                        D.PrpRank_Ini=unique(NotBleached$D.PrpRank_Ini))
+        # get prediction
+        pred <- predict(D.Prp_Rank_2,newdata= NotBleachedData, se.fit=TRUE,
+                        type = "response")
+        # CI function
+        make_ci <- function(pred, data){
+          # fit, lower, and upper CI
+          fit <- pred$fit
+          lower <- fit - 2*pred$se.fit
+          upper <- fit + 2*pred$se.fit
+          return(data.frame(fit, lower, upper, data))
+        }
+        my_pred <- make_ci(pred, NotBleachedData)
   
-  resdf$fit <- predict(D.Prp_Rank_2, newdata=resdf, type="response")
-  
-  plot(NA, xlim=c(0,690), ylim=c(0,1), yaxs="r",       
-       xlab="Days at ambient temperature (26-29C)",
-       ylab="Proportion of clade D")
-  reslist <- split(resdf, f=resdf$D.PrpRank_Ini)
-  for (i in 1:length(reslist)) {
-    with(reslist[[i]], lines(fit ~ Days, lwd=1))
-  }
-  abline(v=c(180,360,540, 720), col=("blue"), lty=2) # Add lines for ~6, 12, 18 and 24 months
-  abline(h=0.5, col=("red"), lty=3) # Add a line for 50% CD communities
-  
-   
-  summary(BeforeBleaching1$D.PrpRank_Ini)
-  
+#tiff('outputs/D_ProportionAtVariableT.tiff', units="in", width=6, height=4, res=300) 
+        
+        Dprop <- ggplot(my_pred, aes (Days, fit, shape=D.PrpRank_Ini)) +
+          # scale_fill_gradient(low = "blue", high = "green", midpoint = 0.5)+
+          # scale_colour_brewer(type = "Diverging", palette = "RdBu", direction = -1) +
+          geom_line() + theme_bw( ) +
+          geom_ribbon(aes(ymin=my_pred$lower, 
+                          ymax=my_pred$upper),
+                          linetype=0, alpha=0.3) +
+          scale_y_continuous(name="Proportion of D1a", expand = c(0, 0)) + 
+          scale_x_continuous(name=expression("Time under control temperature "(26*degree*C)),
+                            breaks = c(0, 182.5, 365, 547.5),  
+                            label = c("", "6 months", "12 months", "18 months "),
+                            expand = c(0, 0)) +
+          theme(legend.position="none", 
+                panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+        Dprop + 
+          annotate("rect", xmin= 0, xmax = 690, 
+                   ymin = 0, ymax = 0.5, alpha = .1)
+ # dev.off()
 
 ```
-
-CI FOR THIS PREDICTIONS???
