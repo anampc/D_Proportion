@@ -68,7 +68,8 @@ Dprop_all <- ggplot(qPCR.data, aes (Date, D.Prp, colour=factor(Colony))) +
     # stat_summary(fun.data = "mean_cl_boot",geom = "errorbar")+
    stat_summary(fun.data = "mean_cl_boot",geom = "line")+
     ylab("Proportion of D") + 
-    xlab("Date")  +  theme_gdocs( )  + 
+   scale_x_date(date_breaks = "3 months", date_labels = "%Y-%m") +
+   theme_gdocs( )  + 
     facet_grid(Bleached_1~.)
 Dprop_all +
     annotate("rect", xmin= as.Date("2016-01-18"), xmax = as.Date("2016-02-23"), 
