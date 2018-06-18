@@ -44,7 +44,7 @@
                        sdTemp = sd(Temp))
     
     Temperature<-dplyr::full_join(Temperature, Summary, by=c("Treatment", "Replicate", "Week"))  
-    write.csv(Temperature, "Final_Temperature.csv")
+    # write.csv(Temperature, "Final_Temperature.csv")
     
 # Plot average temperature per week
    # tiff('outputs/Temperature.tiff', units="in", width=6, height=4, res=300)
