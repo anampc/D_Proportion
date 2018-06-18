@@ -59,5 +59,3 @@
         ylab(expression("Temperature"~(degree*C)))
       Temperature_All
   #  dev.off()
-
-
