@@ -1,5 +1,5 @@
 
-### Code and data to follow the proportion of D1a *Symbiodinium* in Ssid corals over
+### Code and data to follow the proportion of D1a *Symbiodinium* in Ssid corals over time
 
 I want to look at the changes in *Symbiodinium* community composition in replicated cores from six *Siderastrea siderea* colonies over a period of about three years. These cores were repeatedly sampled to estimate the symbiont to host cell ratio and some of them were exposed to one or two heat bleaching events. D proportion decline over time when the corals were maintained at control temperature (26-27C), more slowly under ambient temperature (26-29), and rapidly increased during and after heat stress. 
 
